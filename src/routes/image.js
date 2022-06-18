@@ -1,0 +1,88 @@
+const express = require('express')
+const Image = require('../database/schemas/images.js')
+const Object = require('../database/schemas/object.js')
+const multer = require('multer');
+const path = require('path')
+
+
+const storage = multer.diskStorage({
+    destination: function(req, file, cb){
+        cb(null, './uploads/');
+    },
+    filename: function(req, file, cb){
+        cb(null, Date.now() + '_' + file.originalname)
+    }
+});
+
+// filter funkcija koja se koristi za provjeru tipa file-a, mora biti jpeg ili png
+const fileFilter = function(req, file, cb){
+    if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
+        cb(null, true)
+    } else{
+        cb(null, false)
+    }
+}
+
+const upload = multer({
+    storage: storage,
+    limits:{
+        fileSize: 1024 * 1024 * 10
+    },
+    fileFilter: fileFilter
+});
+
+
+const image = new express.Router()
+
+image.post('/api/images', upload.array('images'), async (req, res) => {
+    // res.status(200).send(...arr[0])
+    try {
+        let ids = [];
+        req.files.forEach(async img => {
+            let image = new Image({
+                filename: img.filename,
+                object_id: req.body.object_id
+            })
+            await image.save();
+            ids.push(image._id);
+        });
+        let obj = await Object.findById(req.body.object_id);
+        if (obj['images']) 
+        {
+            obj['images'].push(...ids)
+        } else 
+        {
+            obj['images'] = ids;
+        }
+        await obj.save();
+
+    // res.status(200).send(obj)
+
+    } catch (error) {
+        res.status(400).send(error)
+    }
+
+})
+
+image.get('/api/uploads/:filename', async (req, res) => {
+    let filepath = path.join(__dirname + `/../../uploads/${req.params.filename}`);
+    res.sendFile(filepath);
+});
+
+image.delete('/api/image/:id', async (req, res) => {
+    const _id = req.params.id;
+    console.log("usao u delete");
+    try {
+        const image = await Image.findOneAndDelete({_id})
+        if(!image){
+            return res.status(406).send()
+        }
+        res.send(image)
+    } catch (error) {
+        res.status(500).send(error)
+    }
+})
+
+
+
+module.exports = image
