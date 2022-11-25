@@ -1,38 +1,24 @@
 const express = require('express')
 const Objects = require('../database/schemas/object.js')
+const Pricelist = require('../database/schemas/pricelist.js')
+
+const auth = require('../auth/auth.js');
 
 
 const object = new express.Router()
 
-let arr = 
-    [
-        {
-            name: 'Apartman 1',
-            location:{
-                type: 'Point',
-                coordinates: [13.8353227, 44.8574043]
-            }
-        },
-        {
-            name: 'Apartman 2',
-            location:{
-                type: 'Point',
-                coordinates: [13.8359865, 44.8605346]
-            }
-        },
-    ]
-
-object.post('/api/object', async (req, res) => {
-    // res.status(200).send(...arr[0])
+object.post('/api/object', auth, async (req, res) => {
+    // res.status(200).send(...arr[0]);
     try {
+        req.body.owner = req.user._id;
         let obj = new Objects(
             req.body
         )
         await obj.save();
-    res.status(200).send(obj)
+        return res.status(200).send(obj)
 
     } catch (error) {
-        res.status(400).send(error)
+        return res.status(400).send(error)
     }
 
 })
@@ -46,11 +32,8 @@ object.patch('/api/object', async (req, res) => {
         });
         let obj = await Objects.findOne({_id: req.body._id})
         updates.forEach((update) => {
-            console.log(obj[update], req.body[update]);
             if (req.body[update]) obj[update] = req.body[update]
         })
-        // if (req.body.location.coordinates) obj.location.coordinates = req.body.location.coordinates
-        console.log(obj);
         await obj.save();
         if(!obj){
             return res.status(404).send()
@@ -58,15 +41,13 @@ object.patch('/api/object', async (req, res) => {
         res.status(200).send(obj)
 
     } catch (error) {
-        console.log(error);
         res.status(400).send(error)
     }
 
 })
 
-object.get('/api/object', async (req, res) => {
+object.get('/api/object', auth, async (req, res) => {
     let search = {};
-
     if (req.query.sw && req.query.ne)
     {
         search.location = {
@@ -78,25 +59,39 @@ object.get('/api/object', async (req, res) => {
             }
         }
     }
+    let limit = req.query.limit ?? 10;
+    let skip = 0;
+    if (req.query.skip)
+    {
+        skip = req.query.skip > 1 ? req.query.skip - 1 : skip;
+    }
+    if(req.query.forUser)
+    {
+        if ( ! req.user) return [];
+        search.owner = req.user._id;
+    }
+    skip = limit * skip; 
     try {
         let objects = await Objects.find(search)
+            .limit(req.query.limit ?? 10)
+            .skip(skip)
             .populate('images')
-
-        res.status(200).send(objects)
+            .populate('pricelist')
+        let count = await Objects.countDocuments(search);
+        res.status(200).send({objects, count})
     } catch (error) {
-        console.log(error);
         res.status(400).send(error)
     }
 })
+
 object.get('/api/object/:id', async (req, res) => {
     const _id = req.params.id;
     try {
         let object = await Objects.findOne({
             _id
-        }).populate('images')
+        }).populate('images').populate('pricelist');
         res.status(200).send(object)
     } catch (error) {
-        console.log(error);
         res.status(400).send(error)
     }
 })

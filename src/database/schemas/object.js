@@ -10,31 +10,36 @@ const ObjectSchema = new mongoose.Schema({
     },
     price:
     {
-        type: Number
+        type: Number,
+        required: [true, 'Enter price'],
     },
     pool:
     {
-        type: Boolean
+        type: Boolean,
+        default: false,
     },
     baclony:
     {
-        type: Boolean
+        type: Boolean,
+        default: false,
     },
     pets:
     {
-        type: Boolean
+        type: Boolean,
+        default: false,
     },
     beds:
     {
-        type: Number
+        type: Number,
+        default: 2,
     },
-    // owner:{
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     require: true,
-    //     ref: 'User' //sa kojim modelom se povezuje
-    // }
+    owner:{
+        type: mongoose.Schema.Types.ObjectId,
+        require: true,
+        ref: 'User' //sa kojim modelom se povezuje
+    },
     location:
-    {
+    {   
         type: 
         {
             type: String,
@@ -43,10 +48,12 @@ const ObjectSchema = new mongoose.Schema({
         coordinates: 
         {
             type: Array,
-            index: '2dsphere'
+            index: '2dsphere',
+            required: [true, 'Enter location'],
         },
     },
-    images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }]
+    images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }],
+    pricelist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pricelist' }]
 }, {
     timestamps: true
 })

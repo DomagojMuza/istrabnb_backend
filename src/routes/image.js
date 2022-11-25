@@ -10,7 +10,8 @@ const storage = multer.diskStorage({
         cb(null, './uploads/');
     },
     filename: function(req, file, cb){
-        cb(null, Date.now() + '_' + file.originalname)
+        let ext = "." + file.originalname.split(".").slice(-1);
+        cb(null, Date.now() + '_' + (Math.random()+1).toString(36).substring(2) + ext)
     }
 });
 
@@ -45,6 +46,7 @@ image.post('/api/images', upload.array('images'), async (req, res) => {
             })
             await image.save();
             ids.push(image._id);
+            console.log(ids);
         });
         let obj = await Object.findById(req.body.object_id);
         if (obj['images']) 
@@ -56,9 +58,10 @@ image.post('/api/images', upload.array('images'), async (req, res) => {
         }
         await obj.save();
 
-    // res.status(200).send(obj)
+        res.status(200).send(obj)
 
     } catch (error) {
+        console.log(error);
         res.status(400).send(error)
     }
 
@@ -71,7 +74,6 @@ image.get('/api/uploads/:filename', async (req, res) => {
 
 image.delete('/api/image/:id', async (req, res) => {
     const _id = req.params.id;
-    console.log("usao u delete");
     try {
         const image = await Image.findOneAndDelete({_id})
         if(!image){
